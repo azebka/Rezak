@@ -102,7 +102,7 @@ split_levels:
     keep: left
     greedy: true
 
-  - name: dash_regex
+  - name: d1
     separators: ['re: -\w']
     keep: drop
     greedy: true
@@ -115,30 +115,30 @@ split_levels:
     separators: [","]
     keep: drop
 
-  - name: dash
+  - name: d2
     separators: [" - "]
     keep: drop
 
-  - name: words
+  - name: w1
     separators: ["and", "then"]
     keep: drop
 
-  - name: words
+  - name: w2
     separators: ["I'm", "from", "with", "that", "when", "where"]
     keep: right
 
-  - name: words
+  - name: w3
     separators: ["know"]
     keep: left
 
-  - name: words
+  - name: w4
     separators: ["will", "for"]
     keep: right
 
-  - name: words
+  - name: w5
     separators: ["but", "of"]
     keep: drop
 
-  - name: words
+  - name: w6
     separators: ["to", "you", " I "]
     keep: right

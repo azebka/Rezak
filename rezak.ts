@@ -144,7 +144,8 @@ function parseLevels(raw: any): SplitLevel[] {
       die(`split_levels[${i}].separators must be a non-empty list.`);
     const separators = seps.map((s: any, j: number) => {
       const separator = ensureString(s, "");
-      if (!separator) die(`split_levels[${i}].separators[${j}] must not be empty.`);
+      if (!separator)
+        die(`split_levels[${i}].separators[${j}] must not be empty.`);
 
       const regexPattern = getRegexSeparatorPattern(separator);
       if (regexPattern !== null && regexPattern.length === 0) {
@@ -708,7 +709,7 @@ function splitText(input: string, cfg: Config): string[] {
 
     const prefixes: string[] = [];
     if (cfg.mark_split_level_name && part.splitLevelName) {
-      prefixes.push(part.splitLevelName + " ");
+      prefixes.push("[" + part.splitLevelName + "] ");
     }
     if (cfg.mark_oversized && countWords(post, wordRx) > cfg.max_words) {
       prefixes.push(cfg.oversized_prefix);
