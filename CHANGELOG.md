@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Added optional split-level prefixes via `mark_split_level_name`, allowing output lines to include the matching `split_levels.name`.
+
+### Changed
+
+- Removed the `split_level_prefix` setting. When split-level prefixes are enabled, the script now uses the raw `split_levels.name` value followed by a space.
+- Updated `README.md` to document the simplified split-level prefix behavior and its interaction with oversized markers.
+
 ## [1.1.0] - 2026-03-04
 
 ### Added

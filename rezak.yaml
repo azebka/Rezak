@@ -4,6 +4,7 @@ split_on_whitespace_fallback: false
 
 mark_oversized: true
 oversized_prefix: "[OVERSIZED] "
+mark_split_level_name: true
 
 word_regex: "[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*"
 

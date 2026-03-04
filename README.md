@@ -11,7 +11,7 @@ The script processes input in four stages:
 1. Preprocess the raw text
 2. Split it into fragments
 3. Postprocess each fragment
-4. Mark fragments that are still too long
+4. Add optional output prefixes
 
 ## Processing Flow
 
@@ -134,6 +134,26 @@ In the current config:
 
 So long fragments that could not be split are kept and prefixed with `[OVERSIZED] `.
 
+### Split Level Name Prefixes
+
+The script can also prefix output lines with the `name` of the split level that produced the final fragment.
+
+This is controlled by:
+
+- `mark_split_level_name`
+
+In the current config:
+
+- `mark_split_level_name: true`
+
+When enabled, the script uses the matching `split_levels.name` directly as the prefix, followed by a space.
+
+Example:
+
+- A fragment created by the `end` level is emitted as `end Your text here`
+
+If a fragment was not produced by a named split level, no split-level prefix is added.
+
 ## Input And Output
 
 The script accepts either:
@@ -147,6 +167,13 @@ It outputs:
 - Or to a file when `--outfile` is provided
 
 Each final fragment is written on its own line.
+
+Depending on the config, a line can be prefixed with:
+
+- The split level name, such as `end `
+- The oversized marker, such as `[OVERSIZED] `
+
+If both are enabled, the split level prefix is written first, followed by the oversized prefix.
 
 ## CLI Usage
 
@@ -202,6 +229,7 @@ With the provided `rezak.yaml`, the script is optimized for:
 - Preferring punctuation-based splits before word-based splits
 - Supporting regex-based separators through `re:` / `regex:` entries
 - Applying greedy sentence-level splits even for short text
+- Prefixing output lines with `split_levels.name` when `mark_split_level_name` is enabled
 
 ## Files
 

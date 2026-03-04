@@ -34,6 +34,7 @@ type Config = {
 
   mark_oversized: boolean;
   oversized_prefix: string;
+  mark_split_level_name: boolean;
 
   word_regex: string;
 
@@ -43,6 +44,11 @@ type Config = {
   protect_patterns: string[];
 
   split_levels: SplitLevel[];
+};
+
+type OutputFragment = {
+  text: string;
+  splitLevelName: string | null;
 };
 
 const KEEP_MODES: Set<string> = new Set(["left", "right", "drop"]);
@@ -176,6 +182,7 @@ function loadConfig(configPath: string): Config {
 
   const mark_oversized = toBool(raw.mark_oversized, false);
   const oversized_prefix = ensureString(raw.oversized_prefix, "[OVERSIZED] ");
+  const mark_split_level_name = toBool(raw.mark_split_level_name, false);
 
   const word_regex = ensureString(
     raw.word_regex,
@@ -200,6 +207,7 @@ function loadConfig(configPath: string): Config {
     split_on_whitespace_fallback,
     mark_oversized,
     oversized_prefix,
+    mark_split_level_name,
     word_regex,
     preprocess_steps,
     postprocess_steps,
@@ -606,7 +614,8 @@ function splitFragment(
   cfg: Config,
   wordRx: RegExp,
   protectPatterns: string[],
-): string[] {
+  splitLevelName: string | null = null,
+): OutputFragment[] {
   let s = text.trim();
   if (!s) return [];
 
@@ -618,7 +627,7 @@ function splitFragment(
     // Drop leading delimiter if keep="drop" (even if the left side would be empty).
     const [s2, changed] = dropLeadingDelimiterIfNeeded(s, level);
     if (changed) {
-      return splitFragment(s2, cfg, wordRx, protectPatterns);
+      return splitFragment(s2, cfg, wordRx, protectPatterns, splitLevelName);
     }
 
     const pieces = greedySplitAll(
@@ -630,13 +639,15 @@ function splitFragment(
     );
     if (!pieces) continue;
 
-    const out: string[] = [];
+    const out: OutputFragment[] = [];
     for (const p of pieces)
-      out.push(...splitFragment(p, cfg, wordRx, protectPatterns));
+      out.push(...splitFragment(p, cfg, wordRx, protectPatterns, level.name));
     return out;
   }
 
-  if (countWords(s, wordRx) <= cfg.max_words) return [s];
+  if (countWords(s, wordRx) <= cfg.max_words) {
+    return [{ text: s, splitLevelName }];
+  }
 
   for (const level of cfg.split_levels) {
     if (level.greedy) continue;
@@ -644,7 +655,7 @@ function splitFragment(
     // Drop leading delimiter if keep="drop" (even if the left side would be empty).
     const [s2, changed] = dropLeadingDelimiterIfNeeded(s, level);
     if (changed) {
-      return splitFragment(s2, cfg, wordRx, protectPatterns);
+      return splitFragment(s2, cfg, wordRx, protectPatterns, splitLevelName);
     }
 
     const best = pickBestSplitNonGreedy(
@@ -661,21 +672,25 @@ function splitFragment(
     if (!left || !right) continue;
 
     return [
-      ...splitFragment(left, cfg, wordRx, protectPatterns),
-      ...splitFragment(right, cfg, wordRx, protectPatterns),
+      ...splitFragment(left, cfg, wordRx, protectPatterns, level.name),
+      ...splitFragment(right, cfg, wordRx, protectPatterns, level.name),
     ];
   }
 
   // No separators worked.
-  if (!cfg.split_on_whitespace_fallback) return [s];
+  if (!cfg.split_on_whitespace_fallback) {
+    return [{ text: s, splitLevelName }];
+  }
 
   const ws = whitespaceFallbackSplit(s, wordRx, cfg.min_words_per_side);
-  if (!ws) return [s];
+  if (!ws) {
+    return [{ text: s, splitLevelName }];
+  }
 
   const [left, right] = ws;
   return [
-    ...splitFragment(left, cfg, wordRx, protectPatterns),
-    ...splitFragment(right, cfg, wordRx, protectPatterns),
+    ...splitFragment(left, cfg, wordRx, protectPatterns, splitLevelName),
+    ...splitFragment(right, cfg, wordRx, protectPatterns, splitLevelName),
   ];
 }
 
@@ -688,15 +703,18 @@ function splitText(input: string, cfg: Config): string[] {
 
   const out: string[] = [];
   for (const part of parts) {
-    const post = applyRegexSteps(part, cfg.postprocess_steps).trim();
+    const post = applyRegexSteps(part.text, cfg.postprocess_steps).trim();
     if (!post) continue;
 
-    const finalText =
-      cfg.mark_oversized && countWords(post, wordRx) > cfg.max_words
-        ? cfg.oversized_prefix + post
-        : post;
+    const prefixes: string[] = [];
+    if (cfg.mark_split_level_name && part.splitLevelName) {
+      prefixes.push(part.splitLevelName + " ");
+    }
+    if (cfg.mark_oversized && countWords(post, wordRx) > cfg.max_words) {
+      prefixes.push(cfg.oversized_prefix);
+    }
 
-    out.push(finalText);
+    out.push(prefixes.join("") + post);
   }
   return out;
 }
