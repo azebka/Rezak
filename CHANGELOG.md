@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-04
+
 ### Added
 
 - Added optional split-level prefixes via `mark_split_level_name`, allowing output lines to include the matching `split_levels.name`.
