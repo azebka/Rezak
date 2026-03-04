@@ -1,0 +1,138 @@
+max_words: 8
+min_words_per_side: 1
+split_on_whitespace_fallback: false
+
+mark_oversized: true
+oversized_prefix: "[OVERSIZED] "
+
+word_regex: "[A-Za-z0-9]+(?:'[A-Za-z0-9]+)*"
+
+preprocess_steps:
+  # Удалить строки, которые являются только номером субтитра (например: "49")
+  - pattern: '(?m)^\s*\d+\s*$'
+    repl: ""
+
+  # Удалить строки с таймкодами SubRip (00:02:24,530 --> 00:02:28,910 ...)
+  - pattern: '(?m)^\s*\d{2}:\d{2}:\d{2}[,\.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[,\.]\d{3}.*$'
+    repl: ""
+
+  # Перевод строки -> пробел
+  - pattern: '\n'
+    repl: " "
+
+  # Троеточие (3+ точек) + пробел -> точка
+  - pattern: '\.{3,} '
+    repl: "."
+
+  # Оставшиеся троеточия (3+ точек) -> удалить
+  - pattern: '\.{3,}'
+    repl: ""
+
+  # Удалить [любые метки] в квадратных скобках
+  - pattern: '\[[^\]]+\]'
+    repl: ""
+
+  # Схлопнуть повторяющиеся пробелы
+  - pattern: '\s{2,}'
+    repl: " "
+
+  # Обрезать пробелы по краям (trim)
+  - pattern: '^\s+|\s+$'
+    repl: ""
+
+  # Заменить длинные тире (–, —) на обычный дефис "-"
+  - pattern: "[–—]"
+    repl: "-"
+
+postprocess_steps:
+  # Удалить точки в конце строки
+  - pattern: '\.+$'
+    repl: ""
+
+  # Удалить ";" в конце строки
+  - pattern: ";+$"
+    repl: ""
+
+  # Удалить дефисы в начале строки (с пробелами), типично для реплик субтитров: "- Hello"
+  - pattern: '^\s*[-]+\s*'
+    repl: ""
+
+  # Схлопнуть двойные дефисы/дефисы с пробелами: "--" или "- -" -> "-"
+  - pattern: '[-]\s*[-]'
+    repl: "-"
+
+  # Схлопнуть повторяющиеся пробелы
+  - pattern: '\s{2,}'
+    repl: " "
+
+  # Обрезать пробелы по краям (trim)
+  - pattern: '^\s+|\s+$'
+    repl: ""
+
+  # Добавить пробел после запятой: "word,word" -> "word, word"
+  - pattern: ",(?=[A-Za-z0-9'])"
+    repl: ", "
+
+protect_patterns:
+  # Титулы/сокращения типа "Mr." "Dr." (не разрезать по точке)
+  - '\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St)\.'
+
+  # Сокращения "e.g." / "i.e." (не разрезать внутри)
+  - '\b(?:e\.g\.|i\.e\.)'
+
+  # Аббревиатуры вида "U.S." "U.K." (не разрезать по точкам)
+  - '\b(?:[A-Z]\.){2,}'
+
+  # Дробные числа "3.14" (не разрезать по точке)
+  - '\b\d+\.\d+\b'
+
+  # Числа с разделителями тысяч "1,000" / "1,000.25" (не разрезать)
+  - '\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b'
+
+  # URL (не разрезать)
+  - 'https?://\S+'
+
+  # Email (не разрезать)
+  - '\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b'
+
+split_levels:
+  - name: sentence_end
+    separators: [".", ";", "?", "!"]
+    keep: left
+    greedy: true
+
+  - name: colon
+    separators: [":"]
+    keep: drop
+
+  - name: comma
+    separators: [","]
+    keep: drop
+
+  - name: dash
+    separators: [" - "]
+    keep: drop
+
+  - name: words
+    separators: ["and", "then"]
+    keep: drop
+
+  - name: words
+    separators: ["I'm", "from", "with", "that", "when", "where"]
+    keep: right
+
+  - name: words
+    separators: ["know"]
+    keep: left
+
+  - name: words
+    separators: ["will", "for"]
+    keep: right
+
+  - name: words
+    separators: ["but", "of"]
+    keep: drop
+
+  - name: words
+    separators: ["to", "you", " I "]
+    keep: right
