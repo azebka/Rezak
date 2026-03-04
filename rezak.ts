@@ -3,6 +3,7 @@
 // Notes:
 // - All regex operations are ALWAYS case-insensitive.
 // - Multi-line inline flag like (?m) in patterns is supported ONLY as a prefix and is converted to RegExp flag "m".
+// - Regex separators are supported via "re:<pattern>" or "regex:<pattern>" entries in split_levels.separators.
 // - Separators longer than 1 character are treated as whole word/phrase matches (not inside other words).
 // - keep="drop" also drops the delimiter if it appears at the very beginning of a fragment (e.g., "but ...").
 // - No character-based splitting. Whitespace fallback is optional via config.
@@ -46,6 +47,7 @@ type Config = {
 
 const KEEP_MODES: Set<string> = new Set(["left", "right", "drop"]);
 const WORD_CHAR_RE = /[A-Za-z0-9']/;
+const REGEX_SEPARATOR_PREFIXES = ["re:", "regex:"];
 
 function die(msg: string): never {
   console.error(msg);
@@ -98,6 +100,14 @@ function ensureString(v: any, def: string): string {
   return String(v);
 }
 
+function getRegexSeparatorPattern(token: string): string | null {
+  const lower = token.toLowerCase();
+  for (const prefix of REGEX_SEPARATOR_PREFIXES) {
+    if (lower.startsWith(prefix)) return token.slice(prefix.length);
+  }
+  return null;
+}
+
 function parseSteps(raw: any, key: string): RegexStep[] {
   const steps = raw?.[key];
   if (steps === undefined || steps === null) return [];
@@ -126,9 +136,19 @@ function parseLevels(raw: any): SplitLevel[] {
     const seps = lvl.separators;
     if (!Array.isArray(seps) || seps.length === 0)
       die(`split_levels[${i}].separators must be a non-empty list.`);
-    const separators = seps
-      .map((s: any) => ensureString(s, ""))
-      .filter((s: string) => s.length > 0);
+    const separators = seps.map((s: any, j: number) => {
+      const separator = ensureString(s, "");
+      if (!separator) die(`split_levels[${i}].separators[${j}] must not be empty.`);
+
+      const regexPattern = getRegexSeparatorPattern(separator);
+      if (regexPattern !== null && regexPattern.length === 0) {
+        die(
+          `split_levels[${i}].separators[${j}] regex pattern must not be empty.`,
+        );
+      }
+
+      return separator;
+    });
 
     const keep = ensureString(lvl.keep, "left").toLowerCase();
     if (!KEEP_MODES.has(keep))
@@ -311,6 +331,7 @@ function collectOccurrences(
   protectedIntervals: Array<[number, number]>,
 ): Array<[number, number]> {
   // Rule:
+  // - separators with "re:" / "regex:" prefix => treat as regex matches
   // - separators with len(token) > 1 => treat as word/phrase (boundary-checked; token is trimmed for matching)
   // - separators with len(token) == 1 => treat as literal char
   const occs: Array<[number, number]> = [];
@@ -318,6 +339,25 @@ function collectOccurrences(
 
   for (const rawToken of level.separators) {
     if (!rawToken) continue;
+
+    const regexPattern = getRegexSeparatorPattern(rawToken);
+    if (regexPattern !== null) {
+      const rx = compileRegex(regexPattern, "gi");
+      let match: RegExpExecArray | null;
+      const r = new RegExp(rx.source, rx.flags);
+      while ((match = r.exec(text)) !== null) {
+        if (match[0].length === 0) {
+          r.lastIndex += 1;
+          continue;
+        }
+
+        const start = match.index;
+        const end = match.index + match[0].length;
+        if (!overlapsAny(protectedIntervals, start, end))
+          occs.push([start, end]);
+      }
+      continue;
+    }
 
     if (rawToken.length > 1) {
       const token = rawToken.trim();
@@ -376,6 +416,15 @@ function startMatchSpan(
   tokenRaw: string,
 ): [number, number] | null {
   if (!tokenRaw) return null;
+
+  const regexPattern = getRegexSeparatorPattern(tokenRaw);
+  if (regexPattern !== null) {
+    const baseRx = compileRegex(regexPattern, "i");
+    const anchored = new RegExp(`^(?:${baseRx.source})`, baseRx.flags);
+    const match = text.match(anchored);
+    if (!match || match[0].length === 0) return null;
+    return [0, match[0].length];
+  }
 
   if (tokenRaw.length > 1) {
     const token = tokenRaw.trim();

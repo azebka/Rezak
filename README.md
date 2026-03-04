@@ -76,6 +76,13 @@ Each level also defines how the separator is handled:
 - `keep: right` keeps the separator on the right fragment
 - `keep: drop` removes the separator from both fragments
 
+Separator entries can be written in two forms:
+
+- A plain string for literal matching, such as `","` or `"and"`
+- A regex pattern with the `re:` or `regex:` prefix, such as `re:-\w`
+
+Regex separators are matched directly as regular expressions and remain case-insensitive, like the rest of the regex-based processing in the script.
+
 ### Protected Patterns
 
 The script avoids splitting inside protected matches from `protect_patterns`.
@@ -193,6 +200,7 @@ With the provided `rezak.yaml`, the script is optimized for:
 - Splitting English text into short lines
 - Preserving common abbreviations and structured tokens
 - Preferring punctuation-based splits before word-based splits
+- Supporting regex-based separators through `re:` / `regex:` entries
 - Applying greedy sentence-level splits even for short text
 
 ## Files

@@ -96,9 +96,14 @@ protect_patterns:
   - '\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b'
 
 split_levels:
-  - name: sentence_end
+  - name: end
     separators: [".", ";", "?", "!"]
     keep: left
+    greedy: true
+
+  - name: dash_regex
+    separators: ['re: -\w']
+    keep: drop
     greedy: true
 
   - name: colon
